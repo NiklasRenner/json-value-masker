@@ -2,7 +2,7 @@ package id.renner.json.transform;
 
 import id.renner.json.level.Level;
 
-public interface ValueTransformer {
+public interface StringValueTransformer {
 
     String transform(Level context, String value);
 }

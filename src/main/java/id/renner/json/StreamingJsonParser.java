@@ -2,20 +2,20 @@ package id.renner.json;
 
 import id.renner.json.exception.MalformedJsonException;
 import id.renner.json.level.*;
-import id.renner.json.transform.ValueTransformer;
+import id.renner.json.transform.StringValueTransformer;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 public class StreamingJsonParser {
     private final InputStream inputStream;
-    private final ValueTransformer valueTransformer;
+    private final StringValueTransformer stringValueTransformer;
     private final LevelManager levelManager;
     private final StringBuilder outputBuilder;
 
-    public StreamingJsonParser(InputStream inputStream, ValueTransformer valueTransformer) {
+    public StreamingJsonParser(InputStream inputStream, StringValueTransformer stringValueTransformer) {
         this.inputStream = inputStream;
-        this.valueTransformer = valueTransformer;
+        this.stringValueTransformer = stringValueTransformer;
         this.outputBuilder = new StringBuilder();
         this.levelManager = new LevelManager();
     }
@@ -135,7 +135,7 @@ public class StreamingJsonParser {
 
     private void handleValue(ObjectLevel level, char character) {
         if (character == '"') {
-            var transformedValue = valueTransformer.transform(level, level.getBuffer().toString());
+            var transformedValue = stringValueTransformer.transform(level, level.getBuffer().toString());
             outputBuilder.append(transformedValue);
             outputBuilder.append(character);
             level.setCurrentKeyName(null);
