@@ -45,7 +45,7 @@ public class StreamingJsonParser {
             }
         }
 
-        if (!(levelManager.getCurrent() instanceof TopLevel)) {
+        if (levelManager.getCurrent().getState() != LevelState.START) {
             throw new MalformedJsonException("json not complete");
         }
     }
