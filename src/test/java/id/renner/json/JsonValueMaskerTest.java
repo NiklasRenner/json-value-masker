@@ -100,4 +100,13 @@ class JsonValueMaskerTest {
             masker.mask(inputStream, Collections.emptySet());
         });
     }
+
+    @Test
+    public void testDuplicateObjectKeys() {
+        var input = TestUtil.readFile("input/malformed/duplicate-object-keys.json");
+        var inputStream = new ByteArrayInputStream(input.getBytes());
+        assertThrows(MalformedJsonException.class, () -> {
+            masker.mask(inputStream, Collections.emptySet());
+        });
+    }
 }
