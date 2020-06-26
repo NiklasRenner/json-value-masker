@@ -7,7 +7,7 @@ public class ObjectLevel implements Level {
     private String currentKeyName;
     private boolean valueExpected;
     private boolean keyExpected;
-    private boolean keyAdded;
+    private boolean contentAdded;
 
     public ObjectLevel() {
         this.buffer = new StringBuilder();
@@ -16,7 +16,7 @@ public class ObjectLevel implements Level {
         this.currentKeyName = null;
         this.valueExpected = false;
         this.keyExpected = true;
-        this.keyAdded = false;
+        this.contentAdded = false;
     }
 
     @Override
@@ -24,10 +24,8 @@ public class ObjectLevel implements Level {
         return buffer;
     }
 
-    @Override
     public void setCurrentKeyName(String currentKeyName) {
         this.currentKeyName = currentKeyName;
-        this.keyAdded = true;
     }
 
     public boolean isValueExpected() {
@@ -46,7 +44,6 @@ public class ObjectLevel implements Level {
         this.keyExpected = keyExpected;
     }
 
-    @Override
     public String getCurrentKeyName() {
         return currentKeyName;
     }
@@ -61,17 +58,22 @@ public class ObjectLevel implements Level {
     }
 
     @Override
-    public void revertState() {
-        state = LevelState.OBJECT;
+    public boolean hasContent() {
+        return contentAdded;
     }
 
-    @Override
-    public void resetBuffer() {
+    public void cleanUpAfterKeyAdded() {
+        state = LevelState.OBJECT;
         buffer.setLength(0);
     }
 
     @Override
-    public boolean isKeyAdded() {
-        return keyAdded;
+    public void cleanUpAfterContentAdded() {
+        state = LevelState.OBJECT;
+        buffer.setLength(0);
+        keyExpected = false;
+        valueExpected = false;
+        currentKeyName = null;
+        contentAdded = true;
     }
 }

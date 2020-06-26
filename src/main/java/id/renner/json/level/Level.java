@@ -4,15 +4,9 @@ public interface Level {
 
     LevelState getState();
 
-    void revertState();
-
     StringBuilder getBuffer();
 
-    void resetBuffer();
+    boolean hasContent();
 
-    String getCurrentKeyName();
-
-    void setCurrentKeyName(String keyName);
-
-    boolean isKeyAdded();
+    void cleanUpAfterContentAdded();
 }

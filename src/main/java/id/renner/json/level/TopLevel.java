@@ -1,24 +1,10 @@
 package id.renner.json.level;
 
 public class TopLevel implements Level {
-    @Override
-    public String getCurrentKeyName() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setCurrentKeyName(String keyName) {
-        throw new UnsupportedOperationException();
-    }
 
     @Override
     public LevelState getState() {
         return LevelState.START;
-    }
-
-    @Override
-    public void revertState() {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -27,12 +13,12 @@ public class TopLevel implements Level {
     }
 
     @Override
-    public void resetBuffer() {
+    public boolean hasContent() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean isKeyAdded() {
+    public void cleanUpAfterContentAdded() {
         throw new UnsupportedOperationException();
     }
 }

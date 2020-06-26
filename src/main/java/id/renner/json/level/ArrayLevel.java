@@ -4,23 +4,23 @@ public class ArrayLevel implements Level {
     private final StringBuilder buffer;
 
     private LevelState state;
-    private boolean keyExpected;
-    private boolean keyAdded;
+    private boolean valueExpected;
+    private boolean contentAdded;
 
     public ArrayLevel() {
         this.buffer = new StringBuilder();
 
         this.state = LevelState.ARRAY;
-        this.keyExpected = true;
-        this.keyAdded = false;
+        this.valueExpected = true;
+        this.contentAdded = false;
     }
 
-    public boolean isKeyExpected() {
-        return keyExpected;
+    public boolean isValueExpected() {
+        return valueExpected;
     }
 
-    public void setKeyExpected(boolean keyExpected) {
-        this.keyExpected = keyExpected;
+    public void setValueExpected(boolean valueExpected) {
+        this.valueExpected = valueExpected;
     }
 
     public void setState(LevelState state) {
@@ -33,32 +33,20 @@ public class ArrayLevel implements Level {
     }
 
     @Override
-    public void revertState() {
-        this.state = LevelState.ARRAY;
-    }
-
-    @Override
     public StringBuilder getBuffer() {
         return buffer;
     }
 
     @Override
-    public String getCurrentKeyName() {
-        throw new UnsupportedOperationException();
+    public boolean hasContent() {
+        return contentAdded;
     }
 
     @Override
-    public void setCurrentKeyName(String keyName) {
-        keyAdded = true;
-    }
-
-    @Override
-    public void resetBuffer() {
+    public void cleanUpAfterContentAdded() {
+        state = LevelState.ARRAY;
         buffer.setLength(0);
-    }
-
-    @Override
-    public boolean isKeyAdded() {
-        return keyAdded;
+        valueExpected = false;
+        contentAdded = true;
     }
 }

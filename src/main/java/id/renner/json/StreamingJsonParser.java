@@ -40,8 +40,8 @@ public class StreamingJsonParser {
                 case START -> handleNew(character);
                 case OBJECT -> handleObject((ObjectLevel) level, character);
                 case ARRAY -> handleArray((ArrayLevel) level, character);
-                case KEY -> handleKey(level, character);
-                case VALUE -> handleValue((ObjectLevel) level, character);
+                case KEY -> handleKey((ObjectLevel) level, character);
+                case VALUE -> handleValue(level, character);
             }
         }
     }
@@ -58,16 +58,21 @@ public class StreamingJsonParser {
 
 
     private void handleObject(ObjectLevel level, char character) {
+        switch (character) {
+            case ' ', '\r', '\n', '\t' -> {
+                outputBuilder.append(character);
+                return;
+            }
+        }
+
         if (level.isKeyExpected()) { // before key
             switch (character) {
                 case '"' -> {
                     level.setKeyExpected(false);
                     level.setState(LevelState.KEY);
                 }
-                case ' ', '\r', '\n', '\t' -> {
-                }
                 case '}' -> {
-                    if (level.isKeyAdded()) {
+                    if (level.hasContent()) {
                         throw new MalformedJsonException("trailing comma");
                     }
                     exitLevel();
@@ -79,21 +84,15 @@ public class StreamingJsonParser {
                 case '{' -> levelManager.enter(LevelState.OBJECT);
                 case '[' -> levelManager.enter(LevelState.ARRAY);
                 case '"' -> level.setState(LevelState.VALUE);
-                case ' ', '\r', '\n', '\t' -> {
-                }
                 default -> throw new MalformedJsonException("expected value");
             }
         } else if (level.getCurrentKeyName() != null) { // between key and value
             switch (character) {
                 case ':' -> level.setValueExpected(true);
-                case ' ', '\r', '\n', '\t' -> {
-                }
                 default -> throw new MalformedJsonException("expected key-value separator");
             }
         } else {
             switch (character) { // after value
-                case ' ', '\r', '\n', '\t' -> {
-                }
                 case ',' -> level.setKeyExpected(true);
                 case '}' -> exitLevel();
                 default -> throw new MalformedJsonException("expected end of object or separator");
@@ -104,18 +103,23 @@ public class StreamingJsonParser {
     }
 
     private void handleArray(ArrayLevel level, char character) {
-        if (level.isKeyExpected()) { // before key
+        switch (character) {
+            case ' ', '\r', '\n', '\t' -> {
+                outputBuilder.append(character);
+                return;
+            }
+        }
+
+        if (level.isValueExpected()) { // before key
             switch (character) {
                 case '{' -> levelManager.enter(LevelState.OBJECT);
                 case '[' -> levelManager.enter(LevelState.ARRAY);
                 case '"' -> {
-                    level.setKeyExpected(false);
-                    level.setState(LevelState.KEY);
-                }
-                case ' ', '\r', '\n', '\t' -> {
+                    level.setValueExpected(false);
+                    level.setState(LevelState.VALUE);
                 }
                 case ']' -> {
-                    if (level.isKeyAdded()) {
+                    if (level.hasContent()) {
                         throw new MalformedJsonException("trailing comma");
                     }
                     exitLevel();
@@ -124,9 +128,7 @@ public class StreamingJsonParser {
             }
         } else { // after key
             switch (character) {
-                case ',' -> level.setKeyExpected(true);
-                case ' ', '\r', '\n', '\t' -> {
-                }
+                case ',' -> level.setValueExpected(true);
                 case ']' -> exitLevel();
                 default -> throw new MalformedJsonException("expected end of array or value separator");
             }
@@ -135,28 +137,24 @@ public class StreamingJsonParser {
         outputBuilder.append(character);
     }
 
-    private void handleValue(ObjectLevel level, char character) {
+    private void handleValue(Level level, char character) {
         if (character == '"') {
             var transformedValue = stringValueTransformer.transform(level, level.getBuffer().toString());
             outputBuilder.append(transformedValue);
             outputBuilder.append(character);
-            level.setCurrentKeyName(null);
-            level.setValueExpected(false);
-            level.revertState();
-            level.resetBuffer();
+            level.cleanUpAfterContentAdded();
         } else {
             level.getBuffer().append(character);
         }
     }
 
-    private void handleKey(Level level, char character) {
+    private void handleKey(ObjectLevel level, char character) {
         if (character == '"') {
             var keyName = level.getBuffer().toString();
             level.setCurrentKeyName(keyName);
             outputBuilder.append(keyName);
             outputBuilder.append(character);
-            level.revertState();
-            level.resetBuffer();
+            level.cleanUpAfterKeyAdded();
         } else {
             level.getBuffer().append(character);
         }
@@ -173,7 +171,7 @@ public class StreamingJsonParser {
             }
             case ARRAY -> {
                 var cast = (ArrayLevel) current;
-                cast.setKeyExpected(false);
+                cast.setValueExpected(false);
             }
         }
     }
