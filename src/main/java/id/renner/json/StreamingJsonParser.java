@@ -35,6 +35,7 @@ public class StreamingJsonParser {
         while ((value = inputStream.read()) != -1) {
             var character = (char) value;
             var level = levelManager.getCurrent();
+
             switch (level.getState()) {
                 case START -> handleNew(character);
                 case OBJECT -> handleObject((ObjectLevel) level, character);
@@ -45,102 +46,88 @@ public class StreamingJsonParser {
         }
     }
 
-    private void handleObject(ObjectLevel level, char character) {
+    public void handleNew(char character) {
         switch (character) {
-            case '{':
-                if (!level.isValueExpected()) {
-                    throw new MalformedJsonException("unexpected start of object");
-                }
-                levelManager.enter(LevelState.OBJECT);
-                break;
-            case '[':
-                if (!level.isValueExpected()) {
-                    throw new MalformedJsonException("unexpected start of object");
-                }
-                levelManager.enter(LevelState.ARRAY);
-                break;
-            case ':':
-                if (level.getCurrentKeyName() == null) {
-                    throw new MalformedJsonException("value marker with no key before it");
-                }
-                if (level.isValueExpected()) {
-                    throw new MalformedJsonException("redundant value marker");
-                }
-                level.setValueExpected(true);
-                break;
-            case '"':
-                if (level.isValueExpected()) {
-                    level.setState(LevelState.VALUE);
-                } else {
-                    if (!level.isKeyExpected()) {
-                        throw new MalformedJsonException("new entry without separator");
-                    }
+            case '{' -> levelManager.enter(LevelState.OBJECT);
+            case '[' -> levelManager.enter(LevelState.ARRAY);
+            default -> throw new MalformedJsonException("expected start of json");
+        }
+
+        outputBuilder.append(character);
+    }
+
+
+    private void handleObject(ObjectLevel level, char character) {
+        if (level.isKeyExpected()) {
+            switch (character) {
+                case '"' -> {
                     level.setKeyExpected(false);
                     level.setState(LevelState.KEY);
                 }
-                break;
-            case ',':
-                if (level.isKeyExpected()) {
-                    throw new MalformedJsonException("entry separator when none expected");
+                case ' ', '\r', '\n', '\t' -> {
                 }
-
-                level.setKeyExpected(true);
-                break;
-            case ' ', '\r', '\n', '\t':
-                break;
-            case '}':
-                if (level.getCurrentKeyName() != null || level.isValueExpected()) {
-                    throw new MalformedJsonException("can't end object early");
+                case '}' -> {
+                    if (level.isKeyAdded()) {
+                        throw new MalformedJsonException("trailing comma");
+                    }
+                    exitLevel();
                 }
-                if (level.isKeyAdded() && level.isKeyExpected()) {
-                    throw new MalformedJsonException("trailing comma");
+                default -> throw new MalformedJsonException("expected key");
+            }
+        } else if (level.isValueExpected()) {
+            switch (character) {
+                case '{' -> levelManager.enter(LevelState.OBJECT);
+                case '[' -> levelManager.enter(LevelState.ARRAY);
+                case '"' -> level.setState(LevelState.VALUE);
+                case ' ', '\r', '\n', '\t' -> {
                 }
-                exitLevel();
-                break;
-            default:
-                throw new MalformedJsonException("expected start of key, but got [ " + character + " ]");
+                default -> throw new MalformedJsonException("expected value");
+            }
+        } else {
+            switch (character) {
+                case ',' -> level.setKeyExpected(true);
+                case ':' -> level.setValueExpected(true);
+                case ' ', '\r', '\n', '\t' -> {
+                }
+                case '}' -> {
+                    if (level.getCurrentKeyName() != null) {
+                        throw new MalformedJsonException("");
+                    }
+                    exitLevel();
+                }
+                default -> throw new MalformedJsonException("unexpected character");
+            }
         }
 
         outputBuilder.append(character);
     }
 
     private void handleArray(ArrayLevel level, char character) {
-        switch (character) {
-            case '{':
-                if (!level.isKeyExpected()) {
-                    throw new MalformedJsonException("new entry without separator");
+        if (level.isKeyExpected()) {
+            switch (character) {
+                case '{' -> levelManager.enter(LevelState.OBJECT);
+                case '[' -> levelManager.enter(LevelState.ARRAY);
+                case '"' -> {
+                    level.setKeyExpected(false);
+                    level.setState(LevelState.KEY);
                 }
-                levelManager.enter(LevelState.OBJECT);
-                break;
-            case '[':
-                if (!level.isKeyExpected()) {
-                    throw new MalformedJsonException("new entry without separator");
+                case ' ', '\r', '\n', '\t' -> {
                 }
-                levelManager.enter(LevelState.ARRAY);
-                break;
-            case '"':
-                if (!level.isKeyExpected()) {
-                    throw new MalformedJsonException("new entry without separator");
+                case ']' -> {
+                    if (level.isKeyAdded()) {
+                        throw new MalformedJsonException("trailing comma");
+                    }
+                    exitLevel();
                 }
-                level.setKeyExpected(false);
-                level.setState(LevelState.KEY);
-                break;
-            case ',':
-                if (level.isKeyExpected()) {
-                    throw new MalformedJsonException("entry separator when none expected");
+                default -> throw new MalformedJsonException("expected key");
+            }
+        } else {
+            switch (character) {
+                case ',' -> level.setKeyExpected(true);
+                case ' ', '\r', '\n', '\t' -> {
                 }
-                level.setKeyExpected(true);
-                break;
-            case ' ', '\r', '\n', '\t':
-                break;
-            case ']':
-                if (level.isKeyAdded() && level.isKeyExpected()) {
-                    throw new MalformedJsonException("trailing comma");
-                }
-                exitLevel();
-                break;
-            default:
-                throw new MalformedJsonException("expected start of key, but got [ " + character + " ]");
+                case ']' -> exitLevel();
+            }
         }
 
         outputBuilder.append(character);
@@ -148,13 +135,13 @@ public class StreamingJsonParser {
 
     private void handleValue(ObjectLevel level, char character) {
         if (character == '"') {
-            level.revertState();
             var transformedValue = valueTransformer.transform(level, level.getBuffer().toString());
-            level.resetBuffer();
             outputBuilder.append(transformedValue);
             outputBuilder.append(character);
             level.setCurrentKeyName(null);
             level.setValueExpected(false);
+            level.revertState();
+            level.resetBuffer();
         } else {
             level.getBuffer().append(character);
         }
@@ -162,25 +149,15 @@ public class StreamingJsonParser {
 
     private void handleKey(Level level, char character) {
         if (character == '"') {
-            level.revertState();
             var keyName = level.getBuffer().toString();
-            level.resetBuffer();
             level.setCurrentKeyName(keyName);
             outputBuilder.append(keyName);
             outputBuilder.append(character);
+            level.revertState();
+            level.resetBuffer();
         } else {
             level.getBuffer().append(character);
         }
-    }
-
-    public void handleNew(char character) {
-        switch (character) {
-            case '{' -> levelManager.enter(LevelState.OBJECT);
-            case '[' -> levelManager.enter(LevelState.ARRAY);
-            default -> throw new MalformedJsonException("start of json wasn't array or object");
-        }
-
-        outputBuilder.append(character);
     }
 
     private void exitLevel() {

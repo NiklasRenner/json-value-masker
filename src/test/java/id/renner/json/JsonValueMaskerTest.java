@@ -75,8 +75,17 @@ class JsonValueMaskerTest {
     }
 
     @Test
-    public void testTrailingComma() {
-        var input = TestUtil.readFile("input/malformed/trailing-comma.json");
+    public void testTrailingCommaArray() {
+        var input = TestUtil.readFile("input/malformed/trailing-comma-array.json");
+        var inputStream = new ByteArrayInputStream(input.getBytes());
+        assertThrows(MalformedJsonException.class, () -> {
+            masker.mask(inputStream, Collections.emptySet());
+        });
+    }
+
+    @Test
+    public void testTrailingCommaObject() {
+        var input = TestUtil.readFile("input/malformed/trailing-comma-object.json");
         var inputStream = new ByteArrayInputStream(input.getBytes());
         assertThrows(MalformedJsonException.class, () -> {
             masker.mask(inputStream, Collections.emptySet());
