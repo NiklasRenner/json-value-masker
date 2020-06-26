@@ -109,4 +109,13 @@ class JsonValueMaskerTest {
             masker.mask(inputStream, Collections.emptySet());
         });
     }
+
+    @Test
+    public void testMissingEnd() {
+        var input = TestUtil.readFile("input/malformed/missing-end.json");
+        var inputStream = new ByteArrayInputStream(input.getBytes());
+        assertThrows(MalformedJsonException.class, () -> {
+            masker.mask(inputStream, Collections.emptySet());
+        });
+    }
 }

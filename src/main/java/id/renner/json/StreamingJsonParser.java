@@ -44,6 +44,10 @@ public class StreamingJsonParser {
                 case VALUE -> handleValue(level, character);
             }
         }
+
+        if (!(levelManager.getCurrent() instanceof TopLevel)) {
+            throw new MalformedJsonException("json not complete");
+        }
     }
 
     public void handleNew(char character) {
